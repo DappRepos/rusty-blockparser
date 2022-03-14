@@ -63,7 +63,7 @@ impl fmt::Debug for BlockIndexRecord {
 pub fn get_block_index(path: &Path) -> OpResult<Vec<BlockIndexRecord>> {
     info!(target: "index", "Reading index from {} ...", path.display());
 
-    let mut block_index = Vec::with_capacity(800000);
+    let mut block_index = Vec::with_capacity(8000000);
     let mut db = DB::open(path, Options::default())?;
     let mut iter = db.new_iter()?;
     let (mut k, mut v) = (vec![], vec![]);
@@ -78,6 +78,20 @@ pub fn get_block_index(path: &Path) -> OpResult<Vec<BlockIndexRecord>> {
         }
     }
     block_index.sort_by_key(|b| b.height);
+
+    let mut index: usize = usize::MAX;
+    let mut remove_index: Vec<usize> = Vec::with_capacity(100000);
+    for i in 0..block_index.len(){
+        if let Some(block) = block_index.get(i){
+            if index == block.height {
+                remove_index.push(block.height);
+            }
+            index = block.height;
+        }
+    }
+    for i in remove_index{
+        block_index.remove(i);
+    }
     info!(target: "index", "Got longest chain with {} blocks ...", block_index.len());
     Ok(block_index)
 }
